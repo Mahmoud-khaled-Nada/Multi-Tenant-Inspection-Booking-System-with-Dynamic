@@ -15,4 +15,10 @@ class User extends Authenticatable
     {
         return $this->belongsTo(\Modules\Tenants\Models\Tenant::class);
     }
+
+
+    public function scopeRole($query, $role)
+    {
+        return $query->where('role', $role);
+    }
 }

@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { teamsApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Users, Plus, User, Calendar, Clock, Settings } from 'lucide-react';
+import { useCreateTeamMutation, useTeamsQuery } from '@/services/teams';
+import { toast } from 'sonner';
 
 const Teams = () => {
   const { user } = useAuth();
@@ -19,21 +21,30 @@ const Teams = () => {
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamDescription, setNewTeamDescription] = useState('');
-  
-  const { data: teams, isLoading, error } = useQuery({
-    queryKey: ['teams', user?.tenantId],
-    queryFn: () => teamsApi.getAll(user?.tenantId || ''),
-    enabled: !!user?.tenantId,
-  });
+
+  const { data: teams, isLoading, error } = useTeamsQuery()
+
+  console.log(teams)
 
   const selectedTeam = teams?.find(team => team.id === selectedTeamId);
 
+  console.log("selectedTeam")
+  console.log(selectedTeam)
+
+  const createTeam = useCreateTeamMutation()
   const handleAddTeam = () => {
-    // This would normally call the API to create a new team
-    console.log('Adding team:', { name: newTeamName, description: newTeamDescription });
-    setIsAddTeamOpen(false);
-    setNewTeamName('');
-    setNewTeamDescription('');
+    createTeam.mutate({ name: newTeamName, description: newTeamDescription }, {
+      onSuccess: () => {
+        toast.success('Team created successfully');
+        setIsAddTeamOpen(false);
+        setNewTeamName('');
+        setNewTeamDescription('');
+      },
+      onError: () => {
+        toast.error('Error creating team');
+      },
+    })
+
   };
 
   const handleManageTeam = (teamId: string) => {
@@ -142,7 +153,7 @@ const Teams = () => {
                 </div>
               </div>
             </CardHeader>
-            
+
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Team Members</span>
@@ -151,16 +162,16 @@ const Teams = () => {
                   <span>{team.members.length}</span>
                 </Badge>
               </div>
-              
+
               <div className="space-y-2">
                 {team.members.slice(0, 3).map((member) => (
                   <div key={member.id} className="flex items-center space-x-2 text-sm">
                     <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
                       <User className="w-3 h-3 text-gray-600" />
                     </div>
-                    <span className="text-gray-700">{member.name}</span>
+                    <span className="text-gray-700">{member.user_name}</span>
                     <Badge variant="outline" className="text-xs capitalize">
-                      {member.role}
+                      {member.user_role}
                     </Badge>
                   </div>
                 ))}
@@ -170,10 +181,10 @@ const Teams = () => {
                   </div>
                 )}
               </div>
-              
+
               <div className="pt-2 border-t space-y-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full text-sm"
                   onClick={() => handleManageTeam(team.id)}
                 >
@@ -205,7 +216,7 @@ const Teams = () => {
               Configure recurring weekly availability for this team
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-6">
             {/* Weekly Schedule */}
             <div className="space-y-4">
@@ -254,7 +265,7 @@ const Teams = () => {
           <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No teams found</h3>
           <p className="text-gray-600 mb-6">Get started by creating your first inspection team.</p>
-          <Button 
+          <Button
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
             onClick={() => setIsAddTeamOpen(true)}
           >

@@ -25,7 +25,8 @@ class LoginResponseResource extends JsonResource
                 'created_at' => $this->tenant->created_at,
                 'updated_at' => $this->tenant->updated_at,
             ],
-            'token' => $this->token,
+            'access_token' => $this->access_token,
+            'refresh_token' => $this->refresh_token,
         ];
     }
 }

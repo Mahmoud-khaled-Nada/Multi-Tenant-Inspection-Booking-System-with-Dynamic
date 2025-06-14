@@ -15,10 +15,15 @@ class UserSeeder extends Seeder
         $faker = Faker::create();
         Tenant::all()->each(function ($tenant) use ($faker)
         {
+            $roles = ['admin', 'manager', 'inspector'];
+            $key   = array_rand($roles);
+            $role  = $roles[$key];
+
             User::create([
                 'tenant_id' => $tenant->id,
                 'name'      => $faker->name,
                 'email'     => $faker->email,
+                'role'      => $role,
                 'password'  => bcrypt('password'),
             ]);
         });
@@ -26,6 +31,7 @@ class UserSeeder extends Seeder
         User::first()->update([
             'name'  => "Admin Demo",
             'email' => "admin@demo.com",
+            'role'  => "admin",
         ]);
     }
 }

@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/rules-of-hooks */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -12,6 +14,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { teamsApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import { User, Plus, Mail, Shield, UsersIcon, Search, Filter, Calendar, Settings } from 'lucide-react';
+import { useCreateUserMutation, useUsersAnalysisQuery } from '@/services/users-management';
+import { toast } from 'sonner';
+import { Loading } from '@/components/Loading';
+import { useAssignTenantsMutation, useTeamsQuery } from '@/services/teams';
+import { useCreateBookingMutation } from '@/services/booking';
 
 const Users = () => {
   const { user } = useAuth();
@@ -22,61 +29,130 @@ const Users = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newTenantName, setNewTenantName] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserRole, setNewUserRole] = useState<'admin' | 'manager' | 'inspector'>('inspector');
-  
+  const [editAction, setEditAction] = useState('');
+  const createUser = useCreateUserMutation()
+  const usersAnalysis = useUsersAnalysisQuery()
+  const assignTenants = useAssignTenantsMutation()
+  const createBooking = useCreateBookingMutation()
+
+  //
+
   // New Booking form state
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [bookingTeam, setBookingTeam] = useState('');
   const [bookingNotes, setBookingNotes] = useState('');
 
   // Get all users from teams
-  const { data: teams } = useQuery({
-    queryKey: ['teams', user?.tenantId],
-    queryFn: () => teamsApi.getAll(user?.tenantId || ''),
-    enabled: !!user?.tenantId,
-  });
+
+  const team = useTeamsQuery()
+
+  if (team.isLoading)
+    return <Loading />
 
   // Get all users from teams
-  const allUsers = teams?.flatMap(team => team.members) || [];
-  const uniqueUsers = allUsers.filter((user, index, self) => 
+
+  if (usersAnalysis.isLoading)
+    return <Loading />
+
+
+
+  const allUsers = usersAnalysis.data.users || [];
+  const uniqueUsers = allUsers.filter((user, index, self) =>
     index === self.findIndex(u => u.id === user.id)
   );
 
   // Filter users based on search and role
   const filteredUsers = uniqueUsers.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
 
   const handleAddUser = () => {
     console.log('Adding user:', { email: newUserEmail, name: newUserName, role: newUserRole });
+    createUser.mutate({ email: newUserEmail, name: newUserName, role: newUserRole, tenant_name: newTenantName, password: newPassword }, {
+      onSuccess: () => {
+        toast.success('User added successfully');
+      },
+      onError: (error) => {
+        console.error('Error adding user:', error);
+        toast.error('Error adding user');
+      },
+    });
+
     setIsAddUserOpen(false);
     setNewUserEmail('');
     setNewUserName('');
+    setNewPassword('');
+    setNewTenantName('');
     setNewUserRole('inspector');
+
   };
 
   const handleNewBooking = () => {
-    console.log('Creating new booking:', { 
-      date: bookingDate, 
-      time: bookingTime, 
-      team: bookingTeam, 
-      notes: bookingNotes 
+    console.log('Creating new booking:', {
+      date: bookingDate,
+      time: bookingTime,
+      team: bookingTeam,
+      notes: bookingNotes
     });
-    setIsNewBookingOpen(false);
-    setBookingDate('');
-    setBookingTime('');
-    setBookingTeam('');
-    setBookingNotes('');
+    createBooking.mutate({
+      team_id: bookingTeam,
+      date: bookingDate,
+      start_time: bookingTime,
+      end_time: endTime,
+    }, {
+      onSuccess: () => {
+        toast.success('Booking created successfully');
+        setIsNewBookingOpen(false);
+        setBookingDate('');
+        setBookingTime('');
+        setBookingTeam('');
+        setBookingNotes('');
+      },
+       onError: (error: any) => {
+        toast.error(error.message || 'Error assigning team');
+      },
+    })
   };
 
-  const handleEditTeams = (userId: string) => {
-    setSelectedUserId(userId);
-    setIsEditTeamsOpen(true);
+
+
+
+  const handleAssignTeam = (teamId: string, tenantId: string) => {
+    console.log({ teamId, tenantId })
+    assignTenants.mutate({ teamId, tenantId }, {
+      onSuccess: () => {
+        toast.success('Team assigned successfully');
+      },
+      onError: (error: any) => {
+        toast.error(error.message || 'Error assigning team');
+      },
+    });
+  };
+
+  const handleEditTeams = (userId: string, action: 'teams' | 'profile') => {
+    if (action === 'profile') {
+      setEditAction('profile');
+      setSelectedUserId(userId);
+      setIsEditTeamsOpen(true);
+    }
+  };
+
+  const handleEditUser = (userId: string, action: 'teams' | 'profile') => {
+    if (action === 'teams') {
+      setEditAction('teams');
+      setSelectedUserId(userId);
+      setIsEditTeamsOpen(true);
+    }
+    // Add other modals like `setIsEditProfileOpen(true)` if needed
   };
 
   const getRoleColor = (role: string) => {
@@ -93,11 +169,12 @@ const Users = () => {
   };
 
   const getUserTeams = (userId: string) => {
-    return teams?.filter(team => team.members.some(member => member.id === userId)) || [];
+    return team.data?.filter(team => team.members.some(member => member.id === userId)) || [];
   };
 
   const selectedUser = uniqueUsers.find(u => u.id === selectedUserId);
   const selectedUserTeams = selectedUser ? getUserTeams(selectedUser.id) : [];
+
 
   return (
     <div className="space-y-6">
@@ -140,6 +217,17 @@ const Users = () => {
                     onChange={(e) => setBookingTime(e.target.value)}
                   />
                 </div>
+
+                <div>
+                  <Label htmlFor="bookingTime">End Time</Label>
+                  <Input
+                    id="bookingTime"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
+
                 <div>
                   <Label htmlFor="bookingTeam">Team</Label>
                   <Select value={bookingTeam} onValueChange={setBookingTeam}>
@@ -147,7 +235,7 @@ const Users = () => {
                       <SelectValue placeholder="Select a team" />
                     </SelectTrigger>
                     <SelectContent>
-                      {teams?.map((team) => (
+                      {team?.data?.map((team) => (
                         <SelectItem key={team.id} value={team.id}>
                           {team.name}
                         </SelectItem>
@@ -192,6 +280,15 @@ const Users = () => {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
+                  <Label htmlFor="tenant_name">Tenant Name</Label>
+                  <Input
+                    id="tenant_name"
+                    value={newTenantName}
+                    onChange={(e) => setNewTenantName(e.target.value)}
+                    placeholder="tenant 123"
+                  />
+                </div>
+                <div>
                   <Label htmlFor="userEmail">Email</Label>
                   <Input
                     id="userEmail"
@@ -223,6 +320,16 @@ const Users = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="John Doe"
+                  />
+                </div>
                 <div className="flex justify-end space-x-2">
                   <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
                     Cancel
@@ -245,10 +352,10 @@ const Users = () => {
             <UsersIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{uniqueUsers.length}</div>
+            <div className="text-2xl font-bold">{!usersAnalysis.isLoading && usersAnalysis.data.users_count}</div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-white/80 backdrop-blur-sm border-gray-200/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Admins</CardTitle>
@@ -256,11 +363,11 @@ const Users = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {uniqueUsers.filter(u => u.role === 'admin').length}
+              {!usersAnalysis.isLoading && usersAnalysis.data.admin_count}
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-white/80 backdrop-blur-sm border-gray-200/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Managers</CardTitle>
@@ -268,11 +375,11 @@ const Users = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {uniqueUsers.filter(u => u.role === 'manager').length}
+              {!usersAnalysis.isLoading && usersAnalysis.data.manager_count}
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-white/80 backdrop-blur-sm border-gray-200/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Inspectors</CardTitle>
@@ -280,7 +387,7 @@ const Users = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {uniqueUsers.filter(u => u.role === 'inspector').length}
+              {!usersAnalysis.isLoading && usersAnalysis.data.inspector_count}
             </div>
           </CardContent>
         </Card>
@@ -376,13 +483,17 @@ const Users = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditUser(user.id, 'teams')}
+                        >
                           Edit
                         </Button>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
-                          onClick={() => handleEditTeams(user.id)}
+                          onClick={() => handleEditTeams(user.id, 'profile')}
                         >
                           <Settings className="w-3 h-3 mr-1" />
                           Teams
@@ -395,7 +506,7 @@ const Users = () => {
             </TableBody>
           </Table>
 
-          {filteredUsers.length === 0 && (
+          {filteredUsers.length === 0 || usersAnalysis.isLoading && (
             <div className="text-center py-8">
               <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
@@ -414,54 +525,93 @@ const Users = () => {
               Manage team assignments for this user
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Current Teams</Label>
-              <div className="mt-2 space-y-2">
-                {selectedUserTeams.length > 0 ? (
-                  selectedUserTeams.map((team) => (
-                    <div key={team.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <div className="font-medium">{team.name}</div>
-                        <div className="text-sm text-gray-500">{team.description}</div>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        Remove
-                      </Button>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm">User is not assigned to any teams</p>
-                )}
-              </div>
-            </div>
-            
-            <div>
-              <Label>Available Teams</Label>
-              <div className="mt-2 space-y-2">
-                {teams?.filter(team => !selectedUserTeams.some(userTeam => userTeam.id === team.id)).map((team) => (
-                  <div key={team.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
-                    <div>
-                      <div className="font-medium">{team.name}</div>
-                      <div className="text-sm text-gray-500">{team.description}</div>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      Add
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
 
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsEditTeamsOpen(false)}>
-                Close
-              </Button>
-              <Button>
-                Save Changes
-              </Button>
-            </div>
-          </div>
+
+          {
+            editAction === "teams" ? (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="bookingDate">User Name</Label>
+                  <Input
+                    disabled={true}
+                    value={selectedUser?.name || ''}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="bookingTeam">Team</Label>
+                  <Select value={bookingTeam} onValueChange={setBookingTeam}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a team" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {team.data?.map((team) => (
+                        <SelectItem key={team.id} value={team.id}>
+                          {team.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setIsNewBookingOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={() => handleAssignTeam(bookingTeam, selectedUser?.tenant_id)}>
+                    Add
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Label>Current Teams</Label>
+                  <div className="mt-2 space-y-2">
+                    {selectedUserTeams.length > 0 ? (
+                      selectedUserTeams.map((team) => (
+                        <div key={team.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <div className="font-medium">{team.name}</div>
+                            <div className="text-sm text-gray-500">{team.description}</div>
+                          </div>
+                          <Button variant="outline" size="sm">
+                            Remove
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-sm">User is not assigned to any teams</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Available Teams</Label>
+                  <div className="mt-2 space-y-2">
+                    {team?.data?.filter(team => !selectedUserTeams.some(userTeam => userTeam.id === team.id)).map((team) => (
+                      <div key={team.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
+                        <div>
+                          <div className="font-medium">{team.name}</div>
+                          <div className="text-sm text-gray-500">{team.description}</div>
+                        </div>
+                        <Button variant="outline" size="sm">
+                          Add
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setIsEditTeamsOpen(false)}>
+                    Close
+                  </Button>
+                  <Button>
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            )
+          }
         </DialogContent>
       </Dialog>
     </div>

@@ -9,7 +9,7 @@ import { LogIn } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const LoginForm = () => {
-  const [email, setEmail] = useState('admin@acme.com');
+  const [email, setEmail] = useState('admin@demo.com');
   const [password, setPassword] = useState('password');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
@@ -90,7 +90,7 @@ const LoginForm = () => {
           <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-sm text-blue-800 font-medium mb-2">Demo Credentials:</p>
             <div className="text-xs text-blue-700 space-y-1">
-              <p>Email: admin@acme.com</p>
+              <p>Email: admin@demo.com</p>
               <p>Password: password</p>
             </div>
           </div>

@@ -9,11 +9,16 @@ class Tenant extends BaseTenant
 {
     use HasFactory;
 
-    protected $fillable = [ 'name', 'domain' ];
+    protected $fillable = ['name', 'domain'];
 
     public function users()
     {
         return $this->hasOne(\Modules\Users\Models\User::class);
+    }
+
+    public function teams()
+    {
+        return $this->belongsToMany(\Modules\Teams\Models\Team::class, 'team_tenant');
     }
 
 }

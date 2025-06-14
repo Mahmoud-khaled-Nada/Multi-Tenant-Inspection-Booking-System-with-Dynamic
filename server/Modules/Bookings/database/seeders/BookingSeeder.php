@@ -17,7 +17,7 @@ class BookingSeeder extends Seeder
         $faker = Faker::create();
         Team::all()->each(function ($team) use ($date)
         {
-            $user = $team->tenant->users()->first();
+            $user = $team->tenants->users()->first();
 
             Booking::create([
                 'tenant_id'  => $team->tenant_id,

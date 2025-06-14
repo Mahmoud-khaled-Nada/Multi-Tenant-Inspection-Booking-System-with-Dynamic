@@ -4,28 +4,42 @@ export interface User {
   email: string;
   name: string;
   role: 'admin' | 'manager' | 'inspector';
-  tenantId: string;
-  createdAt: string;
-  updatedAt: string;
+  tenant_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Tenant {
   id: string;
   name: string;
-  domain: string;
-  createdAt: string;
-  updatedAt: string;
+  domain?: string;
+  created_at: string;
+  updated_at: string;
 }
+
+export type Member = {
+  id: string;
+  name: string;
+  domain: string;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  user_role: string;
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
+};
+
 
 export interface Team {
   id: string;
   name: string;
   description?: string;
-  tenantId: string;
-  members: User[];
-  createdAt: string;
-  updatedAt: string;
+  tenant_id: string;
+  members: Member[];
+  created_at: string;
+  updated_at: string;
 }
+
 
 export interface TeamAvailability {
   id: string;
@@ -63,3 +77,17 @@ export interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
 }
+
+
+export type LoginResponse = {
+  user: User;
+  tenant: Tenant;
+  access_token: string;
+  refresh_token: string;
+};
+
+export type ProfileResponse = {
+  user: User;
+  tenant: Tenant;
+};
+

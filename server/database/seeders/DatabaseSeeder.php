@@ -15,8 +15,8 @@ class DatabaseSeeder extends Seeder
                      \Modules\Tenants\database\seeders\TenantSeeder::class,
                      \Modules\Users\database\seeders\UserSeeder::class,
                      \Modules\Teams\database\seeders\TeamSeeder::class,
-                     \Modules\Bookings\database\seeders\BookingSeeder::class,
-                     \Modules\Availability\database\seeders\TeamAvailabilitySeeder::class,
+                    //  \Modules\Bookings\database\seeders\BookingSeeder::class,
+                    //  \Modules\Availability\database\seeders\TeamAvailabilitySeeder::class,
                 ]);
     }
 }

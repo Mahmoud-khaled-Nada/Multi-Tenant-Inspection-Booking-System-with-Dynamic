@@ -13,18 +13,23 @@ class TenantSeeder extends Seeder
         $data = [
             [
                 'name' => 'Tenant 1',
+                'domain' => 'tenant1',
             ],
             [
                 'name' => 'Tenant 2',
+                'domain' => 'tenant2',
             ],
             [
                 'name' => 'Tenant 3',
+                'domain' => 'tenant3',
             ],
             [
                 'name' => 'Tenant 4',
+                'domain' => 'tenant4',
             ],
             [
                 'name' => 'Tenant 5',
+                'domain' => 'tenant5',
             ],
         ];
 
